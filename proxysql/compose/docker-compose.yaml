@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  proxysql:
+    image: safespring/nextcloud-proxysql:2.0.14-1
+    environment:
+      INITIALIZE: 1
+    network_mode: "host"
+    restart: unless-stopped
+    volumes:
+      - ${PWD}/proxysql.cnf:/etc/proxysql.cnf

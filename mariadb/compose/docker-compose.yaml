@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  mariadb-server:
+    image: safespring/nextcloud-mariadb:10.5.5-1
+    environment:
+      MYSQL_ROOT_PASSWORD: M5H&%@-0BgY3312Nws2g
+      BOOTSTRAP: 0
+      FORCE_BOOTSTRAP: 0
+    network_mode: "host"
+    restart: on-failure
+    volumes:
+      - ${PWD}/datadir:/var/lib/mysql
+      - ${PWD}/init:/docker-entrypoint-initdb.d
+      - ${PWD}/conf:/etc/mysql/mariadb.conf.d
+      - ${PWD}/backups:/backups
+    ulimits:
+      nofile:
+        soft: 256000
+        hard: 256000
+    command:
+      - --wsrep_cluster_address=gcomm://89.45.237.193,89.45.237.218,89.45.237.133
