@@ -1,0 +1,6 @@
+version: '3.8'
+services:
+  mariadb-server:
+    command:
+      - --wsrep_cluster_address=gcomm://
+      - --wsrep_recover
