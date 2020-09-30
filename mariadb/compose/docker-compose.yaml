@@ -7,7 +7,7 @@ services:
       BOOTSTRAP: 0
       FORCE_BOOTSTRAP: 0
     network_mode: "host"
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - ${PWD}/datadir:/var/lib/mysql
       - ${PWD}/init:/docker-entrypoint-initdb.d
@@ -19,3 +19,12 @@ services:
         hard: 256000
     command:
       - --wsrep_cluster_address=gcomm://89.45.237.193,89.45.237.218,89.45.237.133
+
+  mariadb-exporter:
+    image: prom/mysqld-exporter:latest
+    depends_on:
+      - mariadb-server
+    environment:
+      DATA_SOURCE_NAME: "exporter:BjF4242g5bYRswX490Mw@(127.0.0.1:3306)/information_schema"
+    network_mode: "host"
+    restart: on-failure
