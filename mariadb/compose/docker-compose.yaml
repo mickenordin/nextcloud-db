@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  mariadb-server:
+  nextcloud-mariadb:
     image: safespring/nextcloud-mariadb:10.5.5-1
     environment:
       MYSQL_ROOT_PASSWORD: M5H&%@-0BgY3312Nws2g
@@ -23,7 +23,7 @@ services:
   mariadb-exporter:
     image: prom/mysqld-exporter:latest
     depends_on:
-      - mariadb-server
+      - nextcloud-mariadb
     environment:
       DATA_SOURCE_NAME: "exporter:BjF4242g5bYRswX490Mw@(127.0.0.1:3306)/information_schema"
     network_mode: "host"
