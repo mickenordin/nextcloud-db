@@ -117,7 +117,7 @@ safe_to_bootstrap: 1
 
 ## Start the cluster after an ungraceful shutdown
 
-In cases where all nodes were shut down ungracefully like a power trip, the MariaDB Cluster shall be left with `safe_to_bootstrap: 0` on all nodes. To verify this, check the content of `grastate.dat` under the MySQL data volume:
+In cases where all nodes were shut down ungracefully like a power trip, the MariaDB Cluster shall be left with `safe_to_bootstrap: 0` and `seqno: -1` on all nodes. To verify this, check the content of `grastate.dat` under the MySQL data volume:
 
 ```bash
 $ cat datadir/grastate.dat
@@ -128,7 +128,7 @@ seqno:   -1
 safe_to_bootstrap: 0
 ```
 
-Since all nodes will have the same value of 0, none of them can be bootstrapped safely. Galera requires manual intervention to set the value back to 1 from the most up-to-date node in the cluster. To check which node is the most up-to-date ones, include the `docker-compose.recover.yaml` which appending the `--wsrep_recover` option:
+Since all nodes will have the same values (`seqno: -1` and `safe_to_bootstrap: 0`), none of them can be bootstrapped safely. Galera requires manual intervention to set the value back to 1 from the most up-to-date node in the cluster. To check which node is the most up-to-date ones, include the `docker-compose.recover.yaml` which appending the `--wsrep_recover` option:
 ```bash
 cd compose
 docker-compose -f docker-compose.yaml -f docker-compose.recover.yaml up --abort-on-container-exit
@@ -191,11 +191,11 @@ By default, the image will create a backup directory under `/backups/`. This sho
       - ${PWD}/backups:/backups
 ```
 
-All backup credentails are stored in a specific files, `/etc/mysql/mariadb.conf.d/credentials.cnf`. The backup user is created automatically by `init/02-backup_user.sql` during container initialization stage.
+All backup credentials are stored in a specific files, `/etc/mysql/mariadb.conf.d/credentials.cnf`. The backup user is created automatically by [init/02-backup_user.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/02-backup_user.sql) during container initialization stage.
 
 ### Mariabackup
 
-To create a physical backup using mariabackup, attach to the service with the following command:
+To create a physical backup using mariabackup, attach to the running service with the following command:
 
 ```bash
 docker-compose exec nextcloud-mariadb /usr/bin/mariabackup --defaults-file=/etc/mysql/mariadb.conf.d/credentials.cnf --backup --target-dir=/backups/mariabackup
@@ -206,8 +206,10 @@ docker-compose exec nextcloud-mariadb /usr/bin/mariabackup --defaults-file=/etc/
 
 ### mysqldump
 
+To create a logical backup using mysqldump, attach to the running service with the following command:
+
 ```bash
 docker-compose exec nextcloud-mariadb /bin/mysqldump --defaults-file=/etc/mysql/mariadb.conf.d/credentials.cnf --single-transaction --all-databases | gzip > /backups/mysqldump_$(date '+%Y-%m-%d_%H:%M:%S').sql.gz
 ```
 
-The example mysqldump output: `mysqldump_2020-09-28_09:23:59.sql.gz`
+Example mysqldump filename: `mysqldump_2020-09-28_09:23:59.sql.gz`
