@@ -50,7 +50,7 @@ You shall see the following line, indicating this node is started with Galera re
 4) Verify if all nodes are connected to the cluster with the following command on any node:
 
 ```bash
-$ docker-compose exec nextcloud-mariadb mysql -e 'SELECT * FROM mysql.wsrep_cluster_members'
+$ docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup -e 'SELECT * FROM mysql.wsrep_cluster_members'
 +--------------------------------------+--------------------------------------+-----------------+-----------------------+
 | node_uuid                            | cluster_uuid                         | node_name       | node_incoming_address |
 +--------------------------------------+--------------------------------------+-----------------+-----------------------+
@@ -59,6 +59,8 @@ $ docker-compose exec nextcloud-mariadb mysql -e 'SELECT * FROM mysql.wsrep_clus
 | 564cb0e4-0200-11eb-8b35-0f7cbcbf3ea1 | cb61f63f-01fd-11eb-9e62-6745e57d17ff | mariadb2-docker | AUTO                  |
 +--------------------------------------+--------------------------------------+-----------------+-----------------------+
 ```
+
+\* *The above `mysql` command reads the user credentials from `[mysql_backup]` directive inside `credentials.cnf`, as supplied by `--defaults-group-suffix` parameter.*
 
 ---
 
@@ -157,12 +159,14 @@ docker-compose -f docker-compose.yaml -f docker-compose.bootstrap.yaml up -d
 
 Then, start the rest of the nodes (one node at a time) using the default compose file:
 ```bash
+cd compose
 docker-compose up -d # db2
 docker-compose up -d # db3
 ```
 
 Finally, back to the bootstrapped node (db1) and restart the node with the default compose file:
 ```bash
+cd compose
 docker-compose down #db1
 docker-compose up -d #db1
 ```
@@ -195,21 +199,29 @@ All backup credentials are stored in a specific files, `/etc/mysql/mariadb.conf.
 
 ### Mariabackup
 
-To create a physical backup using mariabackup, attach to the running service with the following command:
+To create a physical backup using `mariabackup`, attach to the running service and specify the backup command:
 
 ```bash
-docker-compose exec nextcloud-mariadb /usr/bin/mariabackup --defaults-file=/etc/mysql/mariadb.conf.d/credentials.cnf --backup --target-dir=/backups/mariabackup
+cd compose
+docker-compose exec nextcloud-mariadb mariabackup --backup --target-dir=/backups/mariabackup_$(date '+%Y-%m-%d_%H:%M:%S')
 ```
 
 ** You will see some output. Make sure you see `Completed OK` in the last line. That's the indicator the backup is completed successfully.
 
+Example created directory: `mariabackup_2020-10-02_06:40:39`
+
+\* *The above `mariabackup` command reads the user credentials from `[mariabackup]` directive inside `credentials.cnf`.*
+
 
 ### mysqldump
 
-To create a logical backup using mysqldump, attach to the running service with the following command:
+To create a logical backup using `mysqldump`, attach to the running service and specify the backup command:
 
 ```bash
-docker-compose exec nextcloud-mariadb /bin/mysqldump --defaults-file=/etc/mysql/mariadb.conf.d/credentials.cnf --single-transaction --all-databases | gzip > /backups/mysqldump_$(date '+%Y-%m-%d_%H:%M:%S').sql.gz
+cd compose
+docker-compose exec nextcloud-mariadb mysqldump --single-transaction --all-databases | gzip > backups/mysqldump_$(date '+%Y-%m-%d_%H:%M:%S').sql.gz
 ```
 
 Example mysqldump filename: `mysqldump_2020-09-28_09:23:59.sql.gz`
+
+\* *The above `mysqldump` command reads the user credentials from `[mysqldump]` directive inside `credentials.cnf`.*
