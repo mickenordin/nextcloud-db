@@ -35,12 +35,28 @@ Some customizations/improvements have been added into this image, particularly:
 
 ## Build
 
-To build the image:
+To build the image with the `latest` tag:
 
 ```bash
 $ git clone https://github.com/safespring/nextcloud-db
 $ cd nextcloud-db/mariadb
 $ docker build -t safespring/nextcloud-mariadb:latest .
+```
+It's recommended to have a proper versioning number to track changes between images:
+
+```bash
+$ docker build -t safespring/nextcloud-mariadb:10.5.5-1 .
+```
+
+### Versioning
+
+The tag naming format is:
+`{vendor}/{image_name}:{software_version}-{build_number_identifier}`
+
+The `build_number` is an identifier in integer format, identical for every build and shall be incrementing. For example, suppose we have an image tagged as `safespring/nextcloud-mariadb:10.5.5-89`. For a new MariaDB version 10.5.6, the image tag should be:
+
+```bash
+$ docker build -t safespring/nextcloud-mariadb:10.5.6-90 .
 ```
 
 ## Docker Run
