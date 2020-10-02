@@ -72,7 +72,7 @@ Only bootstrap one node in a Galera cluster (commonly the first node). The rest 
 
 ```bash
 cd compose
-docker-compose down -d
+docker-compose down
 docker-compose up -d
 ```
 *This will load the default `docker-compose.yaml` in the current directory.*
@@ -87,21 +87,21 @@ On db3:
 
 ```bash
 cd compose
-docker-compose down -d
+docker-compose down
 ```
 
 On db2:
 
 ```bash
 cd compose
-docker-compose down -d
+docker-compose down
 ```
 
 On db1:
 
 ```bash
 cd compose
-docker-compose down -d
+docker-compose down
 ```
 
 The last node that goes down, shall have `safe_to_bootstrap` set to 1. To verify this, we can look at the content of `grastate.dat` file under the MySQL data volume:
@@ -173,7 +173,7 @@ Restarting a node is similar to stopping and starting a container:
 
 ```bash
 cd compose
-docker-compose down -d
+docker-compose down
 docker-compose up -d
 ```
 
