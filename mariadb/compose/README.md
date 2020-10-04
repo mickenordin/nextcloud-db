@@ -206,11 +206,13 @@ cd compose
 docker-compose exec nextcloud-mariadb mariabackup --backup --target-dir=/backups/mariabackup_$(date '+%Y-%m-%d_%H:%M:%S')
 ```
 
-** You will see some output. Make sure you see `Completed OK` in the last line. That's the indicator the backup is completed successfully.
+\* *The above `mariabackup` command reads the user credentials from `[mariabackup]` directive inside `credentials.cnf`.*
+
+You will see some output. Make sure you see `Completed OK` in the last line. That's the indicator the backup is completed successfully.
 
 Example created directory: `mariabackup_2020-10-02_06:40:39`
 
-\* *The above `mariabackup` command reads the user credentials from `[mariabackup]` directive inside `credentials.cnf`.*
+The `--target-dir` is the path **INSIDE** the container, as in this case, `/backups/mariabackup_2020-10-02_06:40:39/` of the container, mapped to `${PWD}/backups` on the Docker host.
 
 
 ### mysqldump
@@ -222,6 +224,8 @@ cd compose
 docker-compose exec nextcloud-mariadb mysqldump --single-transaction --all-databases | gzip > backups/mysqldump_$(date '+%Y-%m-%d_%H:%M:%S').sql.gz
 ```
 
+\* *The above `mysqldump` command reads the user credentials from `[mysqldump]` directive inside `credentials.cnf`.*
+
 Example mysqldump filename: `mysqldump_2020-09-28_09:23:59.sql.gz`
 
-\* *The above `mysqldump` command reads the user credentials from `[mysqldump]` directive inside `credentials.cnf`.*
+The mysqldump stdout output is redirected to the path **OUTSIDE** of the container, as in this case, the backup is saved to `backups/mysqldump_2020-09-28_09:23:59.sql.gz` relative to the current directory on the Docker host.
