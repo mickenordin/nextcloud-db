@@ -14,6 +14,8 @@ if [ "${1:0:1}" == '-' ]; then
 	CMDARG="$@"
 fi
 
+export MYSQL_PS1="\u@$(hostname) [ProxySQL Admin]> "
+
 if [ ! -z $INITIALIZE ] && [ $INITIALIZE -eq 1 ]; then
 
 	echo 'Env INITIALIZE=1, start ProxySQL with --initial parameter'
