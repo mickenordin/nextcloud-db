@@ -249,7 +249,7 @@ Running on IPv6 is possible but not recommended at the moment, due to many issue
 
 ### Administrator user
 
-Most of the administration task can be performed by user `backup` since it has been granted with the `SUPER` privilege. The safest way to connect to the MySQL server via console as user `backup` is to use the following command:
+Most of the administration task can be performed by user `backup` since it has been granted with the `SUPER` privilege (except `GRANT`). The safest way to connect to the MySQL server via console as user `backup` is to use the following command:
 
 ```bash
 docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup
@@ -357,9 +357,52 @@ $ docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup -e
 +--------------------------------------+--------------------------------------+-----------------+-----------------------+
 ```
 
+## Configuration Management
+
+Most of the MariaDB configuration options (or variables) can be modified during runtime. Check the MariaDB Server & System Variables](https://mariadb.com/kb/en/server-system-variables/) page and look for the "Dynamic" field. If "Yes", means the variable can be changed without a MariaDB restart.
+
+### Dynamic variables
+
+To change a dynamic variable, use the `SET GLOBAL` statement. In this example, we want to change a dynamic variable `read_only` to `ON` on db2:
+
+```bash
+cd compose
+docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup -e 'SET GLOBAL read_only = "ON"'
+```
+
+To verify:
+```bash
+docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup -e 'SHOW GLOBAL VARIABLES LIKE "read_only"'
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| read_only     | ON    |
++---------------+-------+
+```
+
+Then, add/append/modify the relevant line inside the MariaDB configuration file at `conf/my.cnf` to make it persists across restart:
+
+```bash
+cd compose
+vi conf/my.cnf # modify config file
+```
+
+### Static variables
+
+To change a static variable which require a MariaDB restart, modify the `conf/my.cnf` file directly and restart the MariaDB server. For example, to increase the `innodb_read_io_threads` to 16, one would do:
+
+```bash
+cd compose
+vi conf/my.cnf # modify the line innodb_read_io_threads and set the value to 16
+docker-compose down # stop MariaDB
+docker-compose up -d # start MariaDB to load the new changes
+```
+
+Only perform static configuration changes one node at a time. Make sure the node is started and joined with the cluster before proceed to the next node.
+
 ## Backup & Restore
 
-By default, the image will create a backup directory under `/backups/`. This should be mapped in the volume when starting the MariaDB container, for example:
+By default, the image will create a backup directory under `/backups`. This should be mapped with a Docker volume when starting the MariaDB container, for example:
 
 ```yaml
     volumes:
@@ -374,6 +417,8 @@ All backup credentials are stored in a specific files, `/etc/mysql/mariadb.conf.
 ### Creating Backup
 
 #### mariabackup
+
+Using mariabackup is the recommended way to create a full backup, especially if the database size is huge (>10GB). Backup performs mariabackup is a hot-backup, meaning the process will not lock the database with condition that all tables are running on InnoDB storage engine (except mysql system tables which are running on MyISAM, but this can be neglected because they are relatively small).
 
 To create a physical backup using `mariabackup`, attach to the running service and specify the backup command:
 
@@ -393,7 +438,7 @@ The `--target-dir` is the path **INSIDE** the container, as in this case, `/back
 
 #### mysqldump
 
-To create a logical backup using `mysqldump`, attach to the running service and specify the backup command:
+To create a non-blocking logical backup using `mysqldump`, attach to the running service and specify the backup command with `--single-transaction` flag (only for InnoDB):
 
 ```bash
 cd compose
@@ -410,16 +455,76 @@ The mysqldump stdout output is redirected to the path **OUTSIDE** of the contain
 
 ### mariabackup
 
+Backup created by Mariabackup is a binary backup, where it performs binary copy of the datadir while monitors the changes happens to the database until the copy operation completes. This means a backup created by Mariabackup is not a consistent backup and has to be prepared first. The prepare operation will roll forward the backup by replaying the InnoDB transaction log to make it consistent again and useful for restoration. After a backup has been prepared, you can simply swap the datadir with the prepared backup but this requires a downtime.
 
+In this example, we would want to restore a full mariabackup located on db1 under directory `/backups/mariabackup_2020-10-06_11:14:15` inside the container.
+
+0) Stop the applications to write to the server.
+
+1) Prepare the backup on db1:
+
+```bash
+cd compose
+docker-compose exec nextcloud-mariadb mariabackup --prepare --target-dir=/backups/mariabackup_2020-10-06_11:14:15
+```
+
+You will see some output. Make sure you see `completed OK!` in the last line. That's the indicator the prepare is completed successfully.
+
+2) Stop the cluster:
+
+```bash
+cd compose
+docker-compose down # db3
+docker-compose down # db2
+docker-compose down # db1
+```
+
+3) Rename the original datadir on db1:
+
+```bash
+cd compose
+mv datadir datadir_bak
+```
+
+4) Copy the prepared backup as directory datadir on db1:
+
+```bash
+mkdir datadir
+cp -r backups/mariabackup_2020-10-06_11:14:15/* datadir/*
+```
+
+5) Now the backup is restored on the db1. We have to bootstrap this node to become the reference node for the cluster:
+
+```bash
+docker-compose -f docker-compose.yaml -f docker-compose.bootstrap.yaml up -d
+```
+
+6) Proceed to start the remaining nodes:
+
+```bash
+cd compose
+docker-compose up -d #db2, wait until the node is synced first
+docker-compose up -d #db3
+```
+
+7) Then, restart the first database node, db1 so it will load up the correct `--wsrep_cluster_address`:
+
+```bash
+cd compose
+docker-compose down #db1
+docker-compose up -d #db1
+```
+
+At this point the cluster is restored and operational. If you want to continue with point-in-time recovery (PITR), see [PITR](#point-in-time-recovery-pitr).
 
 ### mysqldump
 
-Generally speaking, restoring mysqldump on a running Galera cluster is a slow operation, way slower than restoring on a standalone node. This is due to write events that being generated by the import process, where the MySQL client sends the SQL statements to MariaDB server and every single statement has to be replicated and certified by Galera to the other nodes.
+Generally, restoring mysqldump on a running Galera cluster is a slow operation, way slower than restoring on a standalone node. This is due to write events that being generated by the import process, where the MySQL client sends the SQL statements to MariaDB server and every single statement has to be replicated and certified by Galera to the other nodes.
 
 For a small mysqldump size (<100MB), it might not have much impact so we can use the standard mysql import command:
 ```bash
 gunzip backups/mysqldump_2020-09-28_09:23:59.sql.gz # extract the backup
-docker-compose exec nextcloud-mariadb mysql --default-group-suffix=_backup < backups/mysqldump_2020-09-28_09:23:59.sql # restore the backup
+docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup < backups/mysqldump_2020-09-28_09:23:59.sql # restore the backup
 ```
 
 For a big mysqldump size (>100MB), it's better to scale down the MariaDB Cluster size (e.g, from 3 nodes to 1, or 5 nodes to 1) to improve the speed of importing. Suppose we have a 3-node MariaDB Cluster, stop the MariaDB nodes on db3 and db2:
@@ -434,8 +539,8 @@ docker-compose down #db3
 At this point, we should have a 1-node MariaDB Cluster (db1). Perform the import operation on this node with a bigger `--max-allowed-packet` value to improve the import process:
 
 ```bash
-gunzip backups/mysqldump_2020-09-28_09:23:59.sql.gz # extract the backup on node1
-docker-compose exec nextcloud-mariadb mysql --max-allowed-packet=128M --default-group-suffix=_backup < backups/mysqldump_2020-09-28_09:23:59.sql # restore the backup on node1
+gunzip backups/mysqldump_2020-09-28_09:23:59.sql.gz # extract the backup on db1
+docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup --max-allowed-packet=128M < backups/mysqldump_2020-09-28_09:23:59.sql # restore the backup on db1
 ```
 
 Then start again the other DB nodes to re-join the cluster (one node at a time):
@@ -446,6 +551,7 @@ cd compose #db3
 docker-compose up -d #db3
 ```
 
+At this point the cluster is restored and operational. If you want to continue with point-in-time recovery (PITR), see [PITR](#point-in-time-recovery-pitr).
 
 ### Point-in-time Recovery (PITR)
 
@@ -483,18 +589,177 @@ docker-compose exec nextcloud-mariadb mysqlbinlog --start-position=339 /var/lib/
 
 The above will replay all events from that position until the last binary logs available in the directory. You could also use date & time and timestamp, and configure the end-time or end-position as well. Consult [MariaDB mysqlbinlog knowledgebase](https://mariadb.com/kb/en/using-mysqlbinlog/) for details.
 
-### Flashback
+## Upgrade & Downgrade
 
-Flashback (only for MariaDB) is a feature that will allow instances, databases or tables to be rolled back to an old snapshot. Traditionally, to perform a point-in-time recovery (PITR), one would restore a database from a backup, and replay the binary logs to roll forward the database state at a certain time or position.
+### Minor version upgrade
 
-With Flashback, the database can be rolled back to a point of time in the past, which is way faster if we just want to see the past that just happened not a long time ago. Occasionally, using flashback might be inefficient if you want to see a very old snapshot of your data relative to the current date and time. Restoring from a delayed slave, or from a backup plus replaying the binary log might be the better options.
+Upgrading a minor version (10.5.y -> 10.5.z) should be pretty straightforward, which require no upgrade on the system tables within the same major version. Basically, we need to stop the current container and run a new container with an older Docker image, pointing to the same MariaDB datadir. Remember to perform this operation on one database node at a time, and if the upgrade on the first node fails, we still have chance to roll back to the current version.
 
-1. Enable binary log with the following setting:
+This example shows that we would like to perform minor version upgrade to MariaDB 10.5.6 (image: `safespring/nextcloud-mariadb:10.5.6-2`) from MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
 
-  a. `binlog_format` = 'ROW' (default since MySQL 5.7.7).
+1) Stop the container:
 
-  b. `binlog_row_image` = 'FULL' (default since MySQL 5.6).
-2. Use `msqlbinlog` utility from any MariaDB 10.2.4 and later installation.
-3. Flashback is currently supported only over DML statements (INSERT, DELETE, UPDATE). An upcoming version of MariaDB will add support for flashback over DDL statements (DROP, TRUNCATE, ALTER, etc.) by copying or moving the current table to a reserved and hidden database, and then copying or moving back when using flashback.
+```bash
+cd compose
+docker-compose down
+```
 
-## Upgrade
+2) Modify the compose file to use the older image:
+
+```yaml
+    image: safespring/nextcloud-mariadb:10.5.6-2
+```
+
+3) Start the container:
+
+```bash
+cd compose
+docker-compose up -d
+```
+
+Check the Docker logs and make sure the node joins the cluster back without problem. Only proceed to the next nodes only the if the upgrade succeeds on this node, one node at a time.
+
+### Major version upgrade
+
+Upgrading a major version (10.5.x -> 10.6.x) should be handled with care. For a best result, make you sure you have upgraded to the latest minor version first, before attempting to upgrade to the new major version. For example, if you are running on MariaDB 10.5.5 and would like to upgrade 10.6.1, while the latest 10.5 version is 10.5.17, perform minor version upgrade first to 10.5.17, before attempting to upgrade to 10.6.1.
+
+0) Make sure the MariaDB server have been updated to the latest minor version, and the new major version image is ready.
+
+1) To be safe, stop the applications from writing on the database server because mixing nodes running on a different major version in a cluster could have a side-effect of writeset replication failure due to different Galera API version, different replication checksum, etc.
+
+2) Stop the cluster:
+
+```bash
+cd compose
+docker-compose down # db3
+docker-compose down # db2
+docker-compose down # db1
+```
+
+3) Modify the `docker-compose.yaml` to use the new image, assuming the new image name is `safespring/nextcloud-mariadb:10.6.1-18`:
+
+```yaml
+    image: safespring/nextcloud-mariadb:10.6.1-18
+```
+
+4) Bootstrap the last node that goes down (db1):
+
+```bash
+cd compose
+docker-compose up -f docker-compose.yaml -f docker-compose.bootstrap.yaml up -d #db1
+```
+
+5) Run the upgrade script to upgrade MariaDB system tables on db1:
+
+```bash
+docker-compose exec nextcloud-mariadb mysql_upgrade -uroot -p --skip-write-binlog
+```
+
+\* *Make sure you see the last line reported as “OK”.*
+
+Proceed to the next node only if all the commands above are successfully executed.
+
+6) On the remaining nodes (db2 and db3), modify the `docker-compose.yaml` as shown in step 3, start the container and perform the `mysql_upgrade` script (one node at a time):
+
+```bash
+cd compose
+vi docker-compose.yaml # modify the image name
+docker-compose up -d # bring up the container
+docker-compose exec nextcloud-mariadb mysql_upgrade -uroot -p --skip-write-binlog # upgrade system tables
+```
+
+Proceed to the next node only if all the commands above are successfully executed.
+
+### Minor version downgrade
+
+Downgrading a minor version (10.5.y -> 10.5.z) should be pretty straightforward, since the MariaDB system tables should be the identical within the same major version. Simply stop the current container and run a new container with an older Docker image, pointing to the same MariaDB datadir.
+
+This example shows that we would like to downgrade from MariaDB 10.5.6 (image: `safespring/nextcloud-mariadb:10.5.6-2`) to an older version MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
+
+1) Stop the container:
+
+```bash
+cd compose
+docker-compose down
+```
+
+2) Modify the compose file to use the older image:
+
+```yaml
+    image: safespring/nextcloud-mariadb:10.5.5-1
+```
+
+3) Start the container:
+
+```bash
+docker-compose up -d
+```
+
+### Major version downgrade
+
+Downgrading a major version (e.g, 10.5.x -> 10.6.x) is possible, but the safest way is to be done via logical downgrade, meaning you have to export the database first and import it back to the version that you want.
+
+Therefore, one would do the following if one wants to perform major version downgrade. The following example shows how to downgrade from MariaDB 10.6.1 (image: `safespring/nextcloud-mariadb:10.6.1-10`) to an older major version MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
+
+
+1) Stop writing to the MariaDB server, otherwise data written after the backup has initiated will be lost.
+
+2) Take a mysqldump backup on one of the host:
+
+``` bash
+cd compose
+docker-compose exec nextcloud-mariadb mysqldump --single-transaction --master-data=2 --all-databases > backups/mysqldump_downgrade.sql
+```
+
+3) Stop the cluster.
+
+```bash
+cd compose
+docker-compose down # db3
+docker-compose down # db2
+docker-compose down # db1
+```
+
+4) Wipe the datadir:
+
+```bash
+cd compose
+rm -Rf datadir/* # db1
+rm -Rf datadir/* # db2
+rm -Rf datadir/* # db3
+```
+
+5) Modify the `docker-compose.yaml` to the older image:
+
+```yaml
+    image: safespring/nextcloud-mariadb:10.5.5-1
+```
+
+6) Bootstrap a 1-node cluster first, to perform database import. On db1, run:
+
+```bash
+cd compose
+docker-compose -f docker-compose.yaml -f docker-compose.bootstrap.yaml up -d
+```
+
+7) Start importing the database from mysqldump as user `root`. On db1, run:
+
+```bash
+cd compose
+docker-compose exec nextcloud-mariadb mysql -uroot -p --max-allowed-packet=128M < backups/mysqldump_downgrade.sql
+```
+
+8) Start the remaining nodes (one node at a time):
+
+```bash
+cd compose
+docker-compose up -d #db2, wait until it is synced first
+docker-compose up -d #db3
+```
+
+Node joining might take some time, depending on the database size and network connection. Monitor the Docker logs output to see the progress.
+
+
+# Disclaimer
+
+The configuration tuning in this example does not apply to all Nextcloud workloads. Some might require further tuning to improve read/write performance which based on the hardware specs, network latency, access pattern, number of simultaneous active users and many more.
