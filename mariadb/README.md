@@ -107,7 +107,7 @@ The above commands requires a number of pre-configuration as below:
 
 2) In the current directory, prepare 2 directories to be mapped into the container, one called `init` and another one called `conf`.
 
-3) For `init` directory, create all SQL files prefixed with a numeric to determine the order of execution. See examples in the [init](https://github.com/safespring/nextcloud-db/tree/master/mariadb/compose/init) directory. All SQL files under this directory will be executed right after MariaDB is initalized after a fresh start.
+3) For `init` directory, create all SQL files prefixed with an integer value (01 until 99) to determine the order of execution. See examples in the [init](https://github.com/safespring/nextcloud-db/tree/master/mariadb/compose/init) directory. All SQL files under this directory will be executed right after MariaDB is initalized after a fresh start.
 
 4) For `conf` directory, create all MariaDB custom configuration files under this directory. See examples in the [conf](https://github.com/safespring/nextcloud-db/tree/master/mariadb/compose/conf) directory. In the examples, the sensitive information is separated inside `credentials.cnf`. The username and password for the user was created during MariaDB initialization stage as in the `init` directory.
 
