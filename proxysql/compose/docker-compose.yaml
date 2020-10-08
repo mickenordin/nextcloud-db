@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  proxysql:
+  nextcloud-proxysql:
     image: safespring/nextcloud-proxysql:2.0.14-1
     environment:
       INITIALIZE: 1
