@@ -365,10 +365,6 @@ _main() {
 			exec gosu mysql "$BASH_SOURCE" "$@"
 		fi
 
-		# Export environment variables recognizes by mysqld
-		export MYSQL_PWD=$MYSQL_ROOT_PASSWORD
-		export MYSQL_PS1="\u@$(hostname) [\d]> "
-
 		# there's no database, so it needs to be initialized
 		if [ -z "$DATABASE_ALREADY_EXISTS" ]; then
 			mysql_note "Verifying minimum environment.."
