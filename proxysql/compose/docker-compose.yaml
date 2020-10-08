@@ -3,7 +3,7 @@ services:
   nextcloud-proxysql:
     image: safespring/nextcloud-proxysql:2.0.14-1
     environment:
-      INITIALIZE: 1
+      INITIALIZE: 0
     network_mode: "host"
     restart: unless-stopped
     volumes:
