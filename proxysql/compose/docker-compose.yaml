@@ -8,3 +8,4 @@ services:
     restart: unless-stopped
     volumes:
       - ${PWD}/proxysql.cnf:/etc/proxysql.cnf
+      - ${PWD}/conf:/etc/mysql/conf.d/
