@@ -150,6 +150,12 @@ ProxySQL> SAVE MYSQL USERS TO DISK;
 
 To perform a configuration change using this interface, see [Config changes on runtime (no restart required)](#config-changes-on-runtime-no-restart-required).
 
+### Connect as application user
+
+ProxySQL acts as a middle-man between the client and the database servers. When a client connect to the MariaDB load balanced port 6033 (configurable with `mysql-interfaces` variable) the client will see this ProxySQL as "another MariaDB server". ProxySQL treats the front-end (client <-> ProxySQL) and back-end (ProxySQL <-> MariaDB server) connections as two different entities. Sometimes, ProxySQL doesn't even need to create a backend connection to response to the client, e.g, if the query is already in ProxySQL's query cache.
+
+However, ProxySQL requires the MariaDB user credentials to be stored inside `mysql_users`, so it can perform the necessary actions on behalf of the client. Therefore, the ProxySQL host must be granted to access the MariaDB server in the `CREATE USER` or `GRANT` statement. See [Adding a MariaDB user](adding-a-mariadb-user) section for examples.
+
 ## Configuration Management
 
 There are 2 ways to perform configuration management in ProxySQL when running on Docker, depending whether you want to restart the ProxySQL service or not.
