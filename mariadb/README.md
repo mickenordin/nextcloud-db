@@ -148,3 +148,8 @@ The [compose](https://github.com/safespring/nextcloud-db/tree/master/mariadb/com
 | `MYSQL_ALLOW_EMPTY_PASSWORD={string}` | This is an optional variable. Set to a non-empty value, like `yes`, to allow the container to be started with a blank password for the root user. NOTE: Setting this variable to `yes` is not recommended unless you really know what you are doing, since this will leave your MariaDB instance completely unprotected, allowing anyone to gain complete superuser access.
 | `MYSQL_RANDOM_ROOT_PASSWORD={string}` | This is an optional variable. Set to a non-empty value, like `yes`, to generate a random initial password for the root user (using `pwgen`). The generated root password will be printed to stdout (`GENERATED ROOT PASSWORD: .....`).
 | `MYSQL_INITDB_SKIP_TZINFO={string}` | By default, the entrypoint script automatically loads the timezone data needed for the `CONVERT_TZ()` function. If it is not needed, any non-empty value disables timezone loading.
+
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/safespring/nextcloud-db/tree/master/mariadb/CHANGELOG.md).
