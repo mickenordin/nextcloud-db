@@ -152,9 +152,9 @@ To perform a configuration change using this interface, see [Config changes on r
 
 ### Connect as application user
 
-ProxySQL acts as a middle-man between the client and the database servers. When a client connect to the MariaDB load balanced port 6033 (configurable with `mysql-interfaces` variable) the client will see this ProxySQL as "another MariaDB server". ProxySQL treats the front-end (client <-> ProxySQL) and back-end (ProxySQL <-> MariaDB server) connections as two different entities. Sometimes, ProxySQL doesn't even need to create a backend connection to response to the client, e.g, if the query is already in ProxySQL's query cache.
+ProxySQL acts as a middle-man between the client and the database servers. When a client connect to the load balanced port 6033 (configurable with `mysql-interfaces` variable), the client will see this ProxySQL as "another MariaDB server". ProxySQL treats the front-end (client <-> ProxySQL) and back-end (ProxySQL <-> MariaDB server) connections as two different entities. Sometimes, ProxySQL doesn't even need to create a backend connection to response to the client, e.g, if the query is already in ProxySQL's query cache.
 
-However, ProxySQL requires the MariaDB user credentials to be stored inside `mysql_users`, so it can perform the necessary actions on behalf of the client. Therefore, the ProxySQL host must be granted to access the MariaDB server in the `CREATE USER` or `GRANT` statement. See [Adding a MariaDB user](adding-a-mariadb-user) section for examples.
+However, ProxySQL requires the MariaDB user credentials to be stored inside `mysql_users`, so it can perform the necessary actions on behalf of the client. Therefore, the ProxySQL host must be granted to access the MariaDB server in the `CREATE USER` or `GRANT` statement. See [Adding a MariaDB user](#adding-a-mariadb-user) section for examples.
 
 ## Configuration Management
 
@@ -294,11 +294,11 @@ The ONLINE MariaDB node of hostgroup 10 is the single writer, because we configu
 Important notes regarding ProxySQL query rules:
 
 * Query rules are processed as ordered by `rule_id`.
-* Only rules that have `active=1` are processed. Because query rules is a very powerful tool and if it’s misconfigured, it can lead to difficult debugging, by default active is 0. You should double check rules regexes before enabling them.
-* Pay a lot of attention to regex to avoid some rules matching what they shouldn’t.
+* Only rules that have `active=1` are processed. Because query rules is a very powerful tool and if it’s misconfigured, it can lead to difficult debugging, by default `active=0`. You should double check rules RegExes before enabling them.
+* Pay a lot of attention to RegEx to avoid some rules matching what they shouldn’t.
 * The `apply=1` means that no further rules are checked if there is a match. With `apply=0`, we can make rule chaining.
 
-In this example, we would like to have a specific SELECT query to always hit the single-writer node (hostgroup 10). Ideally, we would want to process this SELECT query right before the wildcard SELECT (rule 200). Therefore, we will add a new rule with ID 150 using the following statement:
+In this example, we would like to have a specific SELECT query to always hit the single-writer node (hostgroup 10). Ideally, we would want to process this SELECT query before the wildcard SELECT (rule 200). Hence, we will add a new rule with ID 150 using the following statement:
 
 ```sql
 ProxySQL> INSERT INTO mysql_query_rules (rule_id,match_pattern,active,apply,destination_hostgroup) VALUES (150,'^ SELECT session FROM active_users',1,1,10);
@@ -323,6 +323,7 @@ GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.102' IDENTIFIED 
 GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.11' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud1
 GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.12' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud2
 ```
+\* *You could also grant multiple hosts at once using wildcard, for example `192.168.10.%`.*
 
 Once the above user is created on the MariaDB server, login to ProxySQL admin console:
 
