@@ -18,9 +18,11 @@ It's important to understand how ProxySQL loads the configuration options, so we
 3. Save the configuration options into disk (SQLite database - `/var/lib/proxysql/proxysql.db`).
 4. If `proxysql.db` exists, `/etc/proxysql.cnf` will be ignored, unless ProxySQL is started with `--initial` flag.
 
-Therefore, the first step is to prepare ProxySQL configuration file, `proxysql.cnf` and map it into the container. Use the example [proxysql.cnf](https://github.com/safespring/nextcloud-db/blob/master/proxysql/compose/proxysql.cnf) as the template. Modify the following sections/lines accordingly:
+Therefore, the first step is to prepare ProxySQL configuration file, `proxysql.cnf` and map it into the container. Use the example [proxysql.cnf](https://github.com/safespring/nextcloud-db/blob/master/proxysql/compose/proxysql.cnf) as the template. It is recommended to have at least 2 ProxySQL instances for redundancy purposes, and these instances should be configured with ProxySQL Clustering, by adding all ProxySQL instances into the `proxysql_servers` table as shown in the step 1.
 
-1. IP address/hostname/FQDN of all ProxySQL servers:
+0. Prepare 2 ProxySQL hosts and get the primary IP address of them. We will define all ProxySQL hosts inside `proxysql_servers` section as shown in step 1. The MariaDB Clusters should also be running in full capacity (3/3 nodes or 5/5 nodes) at this point. See [mariadb/compose](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/) if you don't have a cluster running.
+
+1. Modify the IP address/hostname/FQDN of all ProxySQL servers under `proxysql_servers` section:
 
 ```
 proxysql_servers =
@@ -30,7 +32,7 @@ proxysql_servers =
 )
 ```
 
-2. IP address/hostname/FQDN of all MariaDB Cluster servers:
+2. Modify the IP address/hostname/FQDN of all MariaDB Cluster servers:
 
 ```
 mysql_servers =
@@ -41,7 +43,7 @@ mysql_servers =
 )
 ```
 
-3. Username and password of the MySQL users to pass through this ProxySQL:
+3. Modify the username and password of the MySQL users to pass through this ProxySQL:
 
 ```
 mysql_users =
@@ -51,19 +53,53 @@ mysql_users =
 )
 ```
 
-Once `proxysql.cnf` is created, map it with the container as shown in the following excerpt of `docker-compose.yaml`:
+4. Modify the username and password of the ProxySQL monitoring user under `mysql_variables` section to be identical with [init/03-proxysql.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/03-proxysql.sql):
+
+```
+mysql_variables=
+{
+    ...
+    monitor_username="proxysql"
+    monitor_password="Cs923js&&Sv2kjBtw^s"
+    ...
+}
+```
+
+5. Modify the username and password of the ProxySQL `admin` user and `cluster_admin` under `admin_variables`:
+
+```
+admin_variables=
+{
+    admin_credentials="admin:P6dg&6sKJc$Z#ysVx;cluster_admin:Ly7Gsdt^SfWnx1Xb3"
+    ...
+}
+```
+
+\* *Note that we defined `admin_credentials` with 2 admin users - `admin` and `cluster_admin`, separated by a semi-colon. The `admin` user is for ProxySQL administration while the `cluster_admin` is for automatic configuration syncing between ProxySQL servers (a.k.a ProxySQL Clustering). The `cluster_admin` credentials in this line must be identical with `cluster_username` and `cluster_password` variables.*
+
+6. Once `proxysql.cnf` is created, map it with the container as shown in the following excerpt of `docker-compose.yaml`:
 
 ```yaml
     volumes:
       - ${PWD}/proxysql.cnf:/etc/proxysql.cnf
+      - ${PWD}/conf:/etc/mysql/conf.d/
 ```
 
-Then start the ProxySQL container, using the common way:
+7. Then start the ProxySQL container on the first node, using the common way:
 
 ```bash
 cd compose
 docker-compose up -d
 ```
+
+
+8. Then start the ProxySQL container on the first node, using the common way:
+
+```bash
+cd compose
+docker-compose up -d
+```
+
 
 ### Stopping ProxySQL
 
@@ -175,6 +211,8 @@ Then, we need to push this change into disk to make it persistent across restart
 ```sql
 ProxySQL> SAVE MYSQL VARIABLES TO DISK;
 ```
+
+Configuration change should be performed on ONE ProxySQL node only, and it will be automatically synced over to the other nodes defined inside `proxysql_servers` table.
 
 ## Load Balancer Management
 
