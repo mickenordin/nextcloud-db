@@ -37,6 +37,8 @@ $ docker-compose logs nextcloud-mariadb -f
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
+2020-09-30  8:14:59 2 [Note] mysqld: ready for connections.
+...
 ```
 
 2) On the second database node (db2), run:
@@ -53,6 +55,8 @@ $ docker-compose logs nextcloud-mariadb -f
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
+2020-09-30  8:14:59 2 [Note] mysqld: ready for connections.
+...
 ```
 
 3) On the second database node (db3), run:
@@ -65,9 +69,11 @@ docker-compose up -d
 
 You shall see the following line, indicating this node is started with Galera replication:
 ```bash
-$ docker-compose logs -f
+$ docker-compose logs nextcloud-mariadb -f
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
+...
+2020-09-30  8:14:59 2 [Note] mysqld: ready for connections.
 ...
 ```
 
@@ -149,21 +155,24 @@ On db3:
 
 ```bash
 cd compose
-docker-compose kill -s SIGTERM
+docker-compose kill -s SIGTERM # graceful shutdown
+docker-compose down # only if you want to remove the container
 ```
 
 On db2:
 
 ```bash
 cd compose
-docker-compose kill -s SIGTERM
+docker-compose kill -s SIGTERM # graceful shutdown
+docker-compose down # only if you want to remove the container
 ```
 
 On db1:
 
 ```bash
 cd compose
-docker-compose kill -s SIGTERM
+docker-compose kill -s SIGTERM # graceful shutdown
+docker-compose down # only if you want to remove the container
 ```
 \* *By default, `docker-compose down` sends SIGTERM and wait for 10 seconds for a graceful timeout (followed by a SIGKILL after exceeding 10 seconds). The safest way is to use `kill` flag and send SIGTERM which has no timeout, and MariaDB should have all its time to shutdown gracefully (in case there are long running queries).*
 
@@ -234,7 +243,7 @@ docker-compose up -d #db1
 
 ### Restarting a MariaDB node
 
-Restarting a node is similar to stopping and starting a container:
+Restarting a node is a combination of stopping (`kill -S SIGTERM`) and starting a container:
 
 ```bash
 cd compose
@@ -250,7 +259,7 @@ docker-compose up -d
 
 Galera performs initial syncing via IST or SST before allowing a node to join the cluster. In some corner cases, IST could fail and the only way to solve this is to perform a full syncing operation called SST. SST is basically taking a full backup (default is `mariabackup`) of the donor and restore it on the joiner, bringing the joiner closer to the cluster state to catch up.
 
-To force Galera SST, one would need to, at least, remove the `grastate.dat` from the MariaDB directory:
+To force Galera SST, one would need to, at least, remove/rename the `grastate.dat` from the MariaDB directory:
 
 ```bash
 cd compose
@@ -422,9 +431,14 @@ After setting the above, the remaining nodes (db2 and db3) will recover themselv
 
 ### Monitoring agent
 
-This compose file also includes a monitoring service called `mariadb-exporter`. This is an optional service to be run and can be removed if not necessary. This service is basically a Prometheus agent, exporting the monitoring stats of the MariaDB server using a dedicated database user called `exporter`, as shown in this SQL file, [init/01-prometheus.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/01-prometheus.sql).
+This compose file also includes a monitoring service called `mariadb-exporter`. This is an optional service to be run and can be removed if not necessary. This service is basically a Prometheus agent, exporting the monitoring stats of the MariaDB server using a dedicated database user called `exporter`, as shown in this SQL file, [init/01-prometheus.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/01-prometheus.sql). The environment variable `DATA_SOURCE_NAME` must be configured with a correct DSN connection string, as in the following example:
 
-Prometheus server scraper should be configured to connect to port 9104 of this container to retrieve monitoring stats of the MariaDB container. Check out the [mysqld_exporter Github](https://github.com/prometheus/mysqld_exporter) and [Prometheus documentation](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) for details.
+```yaml
+    environment:
+      DATA_SOURCE_NAME: "exporter:BjF4242g5bYRswX490Mw@(127.0.0.1:3306)/information_schema"
+```
+
+Prometheus server scraper should be configured to connect to port 9104 of this `mariadb-exporter` container to retrieve the monitoring stats of the MariaDB container. Check out the [mysqld_exporter Github](https://github.com/prometheus/mysqld_exporter) and [Prometheus documentation](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) for details.
 
 ## Configuration Management
 
