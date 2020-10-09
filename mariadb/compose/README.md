@@ -1,16 +1,16 @@
 # Running with Docker Compose
 
-In this example of Docker compose, we define two services:
+In this example of Docker compose, we define 3 services:
 
 1. **MariaDB server** (mandatory)
-  - Service name: nextcloud-mariadb
-  - Role: The database server
-  - Listening ports: 3306, 4444, 4567, 4568
-1. **MariaDB exporter** (optional)
-  - Service name: mariadb-exporter
-  - Role: Monitoring agent for Prometheus
-  - Listening port: 9104
-1. **Adminer** (optional)
+    - Service name: nextcloud-mariadb
+    - Role: The database server
+    - Listening ports: 3306, 4444, 4567, 4568
+2. **MariaDB exporter** (optional)
+    - Service name: mariadb-exporter
+    - Role: Monitoring agent for Prometheus
+    - Listening port: 9104
+3. **Adminer** (optional)
     - Service name: adminer
     - Role: A lightweight MySQL/MariaDB GUI management tool
     - Listening port: 8080
