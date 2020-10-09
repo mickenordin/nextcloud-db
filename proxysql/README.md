@@ -87,7 +87,7 @@ The [compose](https://github.com/safespring/nextcloud-db/tree/master/proxysql/co
 
 ## ProxySQL.cnf
 
-```bash
+```
 datadir="/var/lib/proxysql"
 
 # ProxySQL admin configuration section
@@ -208,3 +208,7 @@ mysql_users =
     { username = "sbtest", password = "passw0rd", default_hostgroup = 10, transaction_persistent = 0, active = 1 }
 )
 ```
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/safespring/nextcloud-db/tree/master/proxysql/CHANGELOG.md).
