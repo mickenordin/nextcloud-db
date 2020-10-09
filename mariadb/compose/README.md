@@ -10,6 +10,10 @@ In this example of Docker compose, we define two services:
   - Service name: mariadb-exporter
   - Role: Monitoring agent for Prometheus
   - Listening port: 9104
+1. **Adminer** (optional)
+    - Service name: adminer
+    - Role: A lightweight MySQL/MariaDB GUI management tool
+    - Listening port: 8080
 
 \* *Feel free to remove the exporter service, if it is not necessary.*
 
@@ -37,8 +41,6 @@ $ docker-compose logs nextcloud-mariadb -f
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
-2020-09-30  8:14:59 2 [Note] mysqld: ready for connections.
-...
 ```
 
 2) On the second database node (db2), run:
@@ -55,8 +57,6 @@ $ docker-compose logs nextcloud-mariadb -f
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
-2020-09-30  8:14:59 2 [Note] mysqld: ready for connections.
-...
 ```
 
 3) On the second database node (db3), run:
@@ -72,8 +72,6 @@ You shall see the following line, indicating this node is started with Galera re
 $ docker-compose logs nextcloud-mariadb -f
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
-...
-2020-09-30  8:14:59 2 [Note] mysqld: ready for connections.
 ...
 ```
 
@@ -338,7 +336,7 @@ Specify the password as defined under `MYSQL_ROOT_PASSWORD` environment variable
 
 ### Application user
 
-The recommended way to create an application user is to use SQL files as in this example, [init/04-nextcloud.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/04-nextcloud.sql) to create `nextcloud` schema and `nextcloud@'%'` database user.
+In this example, we create an application user by using an SQL file, [init/04-nextcloud.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/04-nextcloud.sql) to create `nextcloud` schema and `nextcloud@'%'` database user. All files under `init` directory will only be loaded once during the database initialization on the bootstrapped node. Data on the joiner nodes will always follow the bootstrapped node.
 
 If you are running on a static environment, try to avoid using the wildcard `%`, when granting host. If you have ProxySQL on top of the cluster, the application user must be created on both MariaDB and ProxySQL, and the ProxySQL must be granted host to access the MariaDB server. For example, if you have a static environment with the following topology:
 
@@ -349,20 +347,22 @@ If you are running on a static environment, try to avoid using the wildcard `%`,
 The recommended grant should be the following:
 ```sql
 CREATE SCHEMA nextcloud;
-CREATE USER 'nextcloud'@'%' IDENTIFIED BY '1Z&hw5oiN$2b#wkH';
-GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.101'; -- proxysql1
-GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.102'; -- proxysql2
-GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.11'; -- nextcloud1
-GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.12'; -- nextcloud1
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.101' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- proxysql1
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.102' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- proxysql2
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.11' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud1
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.12' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud2
 ```
 
-If you choose to run the above SQL statements on the MariaDB server directly, just run it once on any healthy database node (see [Health Checks](#health-checks)). No `FLUSH PRIVILEGES` necessary if you grant using the `GRANT` statement. If you make changes directly to the `mysql.user` table, only then `FLUSH PRIVILEGES` is required. For example, one wants to modify the host IP address from 192.168.10.12 to 192.168.10.13, one would do the following on one of the healthy database nodes:
+Run the above statement once on any healthy database node (see [Health Checks](#health-checks)). No `FLUSH PRIVILEGES` necessary if you grant using the `GRANT` statement. If you make changes directly to the `mysql.user` table, only then `FLUSH PRIVILEGES` is required. For example, one wants to modify the host IP address from 192.168.10.12 to 192.168.10.13, one would do the following on one of the healthy database nodes:
 
 ```sql
 UPDATE mysql.user SET Host = '192.168.10.13' WHERE User = 'nextcloud' AND Host = '192.168.10.12';
 FLUSH PRIVILEGES;
 ```
 
+### Management using GUI
+
+Optionally, you can use Adminer for database administration, accessible on port 8080 of the Docker host. Open the web browser, and go to `http://{Host_IP_Address}:8080/`. You may login using the MariaDB root user or any user created under the `init` directory.
 
 ## Health Checks & Monitoring
 
