@@ -1,5 +1,6 @@
 version: '3.8'
 services:
+  # MariaDB Cluster
   nextcloud-mariadb:
     image: safespring/nextcloud-mariadb:10.5.5-1
     environment:
@@ -20,6 +21,7 @@ services:
     command:
       - --wsrep_cluster_address=gcomm://89.45.237.193,89.45.237.218,89.45.237.133
 
+  # Prometheus agent
   mariadb-exporter:
     image: prom/mysqld-exporter:latest
     depends_on:
@@ -28,3 +30,14 @@ services:
       DATA_SOURCE_NAME: "exporter:BjF4242g5bYRswX490Mw@(127.0.0.1:3306)/information_schema"
     network_mode: "host"
     restart: on-failure
+
+  # Web GUI
+  adminer:
+    image: adminer
+    depends_on:
+      - nextcloud-mariadb
+    environment:
+      ADMINER_DESIGN: pepa-linha
+      ADMINER_DEFAULT_SERVER: localhost
+    network_mode: "host"
+    restart: always
