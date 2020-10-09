@@ -353,7 +353,7 @@ GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.11' IDENTIFIED BY
 GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'192.168.10.12' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud2
 ```
 
-Run the above statement once on any healthy database node (see [Health Checks & Monitoring](#health-checks-monitoring)). No `FLUSH PRIVILEGES` necessary if you grant using the `GRANT` statement. If you make changes directly to the `mysql.user` table, only then `FLUSH PRIVILEGES` is required. For example, one wants to modify the host IP address from 192.168.10.12 to 192.168.10.13, one would do the following on one of the healthy database nodes:
+Run the above statement once on any healthy database node (see [Health Checks & Monitoring](#health-checks--monitoring)). No `FLUSH PRIVILEGES` necessary if you grant using the `GRANT` statement. If you make changes directly to the `mysql.user` table, only then `FLUSH PRIVILEGES` is required. For example, one wants to modify the host IP address from 192.168.10.12 to 192.168.10.13, one would do the following on one of the healthy database nodes:
 
 ```sql
 UPDATE mysql.user SET Host = '192.168.10.13' WHERE User = 'nextcloud' AND Host = '192.168.10.12';
