@@ -2,7 +2,8 @@
 
 ## Supported Tags
 
-* 10.5.5-1,latest,beta (Dockerfile)
+* 10.5.6-2,latest ([Dockerfile](https://github.com/safespring/nextcloud-db/blob/master/mariadb/Dockerfile))
+* 10.5.5-1,latest,beta ([Dockerfile](https://github.com/safespring/nextcloud-db/blob/v1/mariadb/Dockerfile))
 
 ## Overview
 
@@ -45,7 +46,7 @@ $ docker build -t safespring/nextcloud-mariadb:latest .
 It's recommended to have a proper versioning number to track changes between images:
 
 ```bash
-$ docker build -t safespring/nextcloud-mariadb:10.5.5-1 .
+$ docker build -t safespring/nextcloud-mariadb:10.5.6-2 .
 ```
 
 ### Versioning
@@ -58,6 +59,8 @@ The `build_number` is an identifier in integer format, identical for every build
 ```bash
 $ docker build -t safespring/nextcloud-mariadb:10.5.6-90 .
 ```
+
+See [CHANGELOG.md](https://github.com/safespring/nextcloud-db/tree/master/mariadb/CHANGELOG.md) for build details.
 
 ## Docker Run
 
