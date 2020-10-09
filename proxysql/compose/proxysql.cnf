@@ -75,9 +75,9 @@ mysql_galera_hostgroups =
 # List all MariaDB Galera nodes here
 mysql_servers =
 (
-    { address="89.45.237.193" , port=3306 , hostgroup=10, max_connections=100 },
-    { address="89.45.237.218" , port=3306 , hostgroup=10, max_connections=100 },
-    { address="89.45.237.133" , port=3306 , hostgroup=10, max_connections=100 }
+    { address="89.45.237.193" , port=3306 , hostgroup=10, max_connections=100, comment="db1" },
+    { address="89.45.237.218" , port=3306 , hostgroup=10, max_connections=100, comment="db2" },
+    { address="89.45.237.133" , port=3306 , hostgroup=10, max_connections=100, comment="db3" }
 )
 
 # Default query rules:
