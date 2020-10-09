@@ -3,9 +3,9 @@
 In this example of Docker compose, we define 1 service:
 
 1. **ProxySQL** (mandatory)
-  - Service name: nextcloud-proxysql
-  - Role: The database load balancer, sitting on top of MariaDB Cluster
-  - Listening ports: 6033, 6032, 6080
+    - Service name: nextcloud-proxysql
+    - Role: The database load balancer, sitting on top of MariaDB Cluster
+    - Listening ports: 6033, 6032, 6080
 
 ## Service Control
 
@@ -155,6 +155,12 @@ To perform a configuration change using this interface, see [Config changes on r
 ProxySQL acts as a middle-man between the client and the database servers. When a client connect to the load balanced port 6033 (configurable with `mysql-interfaces` variable), the client will see this ProxySQL as "another MariaDB server". ProxySQL treats the front-end (client <-> ProxySQL) and back-end (ProxySQL <-> MariaDB server) connections as two different entities. Sometimes, ProxySQL doesn't even need to create a backend connection to response to the client, e.g, if the query is already in ProxySQL's query cache.
 
 However, ProxySQL requires the MariaDB user credentials to be stored inside `mysql_users`, so it can perform the necessary actions on behalf of the client. Therefore, the ProxySQL host must be granted to access the MariaDB server in the `CREATE USER` or `GRANT` statement. See [Adding a MariaDB user](#adding-a-mariadb-user) section for examples.
+
+The following example shows a standard mysql client to access the MariaDB server via ProxySQL:
+
+```bash
+mysql -u nextcloud -p -h 192.168.10.101 -P 6033
+```
 
 ## Configuration Management
 
@@ -347,12 +353,13 @@ Make sure `default_hostgroup` value is set to 10, the `writer_hostgroup` value. 
 
 ProxySQL exports a lot of metrics, all visible in the `stats` schema and queryable using any client that uses the MySQL protocol.
 
-Login as an
+Log in as ProxySQL administrator:
+
 ```bash
 docker-compose exec nextcloud-proxysql mysql
 ```
 
-Once logged in, we can query any the following tables to get some monitoring insights:
+Once logged in, we can query any the tables inside `stats` schema to get monitoring insights:
 
 ```sql
 ProxySQL> SHOW TABLES FROM stats;
