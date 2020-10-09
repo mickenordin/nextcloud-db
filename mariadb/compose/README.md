@@ -355,7 +355,7 @@ FLUSH PRIVILEGES;
 ```
 
 
-## Health Checks
+## Health Checks & Monitoring
 
 ### Cluster Integrity
 
@@ -419,6 +419,12 @@ docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup mysq
 ```
 
 After setting the above, the remaining nodes (db2 and db3) will recover themselves to rejoin the cluster automatically, because now they can see and compare themselves with the "single source of truth" (db1).
+
+### Monitoring agent
+
+This compose file also includes a monitoring service called `mariadb-exporter`. This is an optional service to be run and can be removed if not necessary. This service is basically a Prometheus agent, exporting the monitoring stats of the MariaDB server using a dedicated database user called `exporter`, as shown in this SQL file, [init/01-prometheus.sql](https://github.com/safespring/nextcloud-db/blob/master/mariadb/compose/init/01-prometheus.sql).
+
+Prometheus server scraper should be configured to connect to port 9104 of this container to retrieve monitoring stats of the MariaDB container. Check out the [mysqld_exporter Github](https://github.com/prometheus/mysqld_exporter) and [Prometheus documentation](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) for details.
 
 ## Configuration Management
 
