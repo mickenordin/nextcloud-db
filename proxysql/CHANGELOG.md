@@ -17,6 +17,5 @@
   - Added `conf/my.cnf` mapping
   - Compose file example
 * Bug fixes:
-  -
 * Deprecated:
   - Removed `MONITOR_CONFIG_CHANGE` env var
