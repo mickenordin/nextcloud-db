@@ -1,10 +1,23 @@
 # Changelog for nextcloud-mariadb
 
-## 10.5.5-1 (stable)
+
+## 10.5.6-2 (stable)
 
 * Release date: 12th Oct, 2020
+* Image tag: `nextcloud-proxysql/10.5.6-2`
+* Improvements:
+  - Updated to MariaDB 10.5.6
+  - Added Adminer into the mix
+* Bug fixes:
+  - Dockerfile updated to 10.5.6 
+* Deprecated:
+
+## 10.5.5-1
+
+* Release date: 9th Oct, 2020
 * Image tag: `nextcloud-proxysql/10.5.5-1`
 * Improvements:
+  - First stable.
 * Bug fixes:
 * Deprecated:
 
@@ -19,4 +32,3 @@
 * Bug fixes:
   - Handling the database initialization if `wsrep_on=ON`
 * Deprecated:
-  -
