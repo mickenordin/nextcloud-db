@@ -2,7 +2,7 @@
 
 ## Supported Tags
 
-* 2.0.14-1,latest,beta (Dockerfile)
+* 2.0.14-1,latest ([Dockerfile](https://github.com/safespring/nextcloud-db/blob/master/proxysql/Dockerfile))
 
 ## Overview
 
@@ -48,6 +48,8 @@ The `build_number` is an identifier in integer format, identical for every build
 ```bash
 $ docker build -t safespring/nextcloud-proxysql:2.0.15-90 .
 ```
+
+See [CHANGELOG.md](https://github.com/safespring/nextcloud-db/tree/master/proxysql/CHANGELOG.md) for build details.
 
 ## Run
 
