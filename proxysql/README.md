@@ -68,14 +68,11 @@ safespring/nextcloud-proxysql:latest
 
 The above commands requires a number of pre-configuration as below:
 
-1. A `proxysql.cnf` must be prepared first. Example as in [](https://github.com/safespring/nextcloud-db/tree/master/proxsqyl#proxysqlcnf). This file shall be mapped with `/etc/proxysql.cnf` inside the container.
+1. A `proxysql.cnf` must be prepared first. Example as in [proxysql.cnf](#proxysqlcnf). This file shall be mapped with `/etc/proxysql.cnf` inside the container.
 2. Default ProxySQL ports are:
-
-  a. 6033 - MySQL/MariaDB load-balanced port.
-
-  b. 6032 - ProxySQL management port.
-
-  c. 6080 - Web UI for stats.
+    - 6033 - MySQL/MariaDB load-balanced port.
+    - 6032 - ProxySQL management port.
+    - 6080 - Web UI for stats.
 
 ## Docker Compose
 
