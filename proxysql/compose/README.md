@@ -32,14 +32,14 @@ proxysql_servers =
 )
 ```
 
-2. Modify the IP address/hostname/FQDN of all MariaDB Cluster servers:
+2. Modify the IP address/hostname/FQDN and the comment fields of all MariaDB Cluster servers:
 
 ```
 mysql_servers =
 (
-    { address="192.168.10.201" , port=3306 , hostgroup=10, max_connections=100 },
-    { address="192.168.10.202" , port=3306 , hostgroup=10, max_connections=100 },
-    { address="192.168.10.203" , port=3306 , hostgroup=10, max_connections=100 }
+    { address="89.45.237.193" , port=3306 , hostgroup=10, max_connections=100, comment="db1" },
+    { address="89.45.237.218" , port=3306 , hostgroup=10, max_connections=100, comment="db2" },
+    { address="89.45.237.133" , port=3306 , hostgroup=10, max_connections=100, comment="db3" }
 )
 ```
 
@@ -93,7 +93,7 @@ docker-compose up -d
 ```
 
 
-8. Then start the ProxySQL container on the first node, using the common way:
+8. Then start the ProxySQL container on the second node, using the common way:
 
 ```bash
 cd compose
@@ -134,7 +134,7 @@ docker-compose exec nextcloud-proxysql mysql
 After connecting to it, you’ll see a MySQL-compatible interface for querying the various ProxySQL-related tables. Some basic commands:
 
 ```sql
-ProxySQL> SHOW SCHEMAS;
+ProxySQL> SHOW DATABASES;
 ProxySQL> SHOW TABLES; -- ProxySQL administration tables
 ProxySQL> SHOW TABLES FROM stats; -- stats & monitoring tables
 ProxySQL> status; -- connection status
@@ -216,42 +216,175 @@ Configuration change should be performed on ONE ProxySQL node only, and it will 
 
 ## Load Balancer Management
 
-###  Backend server status
+###  Backend server and routing status
 
-To check the current backend server status from the ProxySQL point-of-view, we should query the runtime-related tables:
+To understand the current backend servers and routing status, we should query the runtime-related tables as shown below:
 
 ```sql
-ProxySQL> SELECT hostgroup_id,hostname,status,weight FROM runtime_mysql_servers;
-+--------------+---------------+---------+--------+
-| hostgroup_id | hostname      | status  | weight |
-+--------------+---------------+---------+--------+
-| 10           | 89.45.237.133 | SHUNNED | 1      |
-| 20           | 89.45.237.133 | ONLINE  | 1      |
-| 30           | 89.45.237.133 | ONLINE  | 1      |
-| 10           | 89.45.237.218 | ONLINE  | 1      |
-+--------------+---------------+---------+--------+
+ProxySQL> SELECT hostgroup_id,hostname,port,status,weight,comment FROM runtime_mysql_servers ORDER BY hostgroup_id;
++--------------+---------------+------+---------+--------+---------+
+| hostgroup_id | hostname      | port | status  | weight | comment |
++--------------+---------------+------+---------+--------+---------+
+| 10           | 89.45.237.133 | 3306 | SHUNNED | 1      | db3     |
+| 10           | 89.45.237.193 | 3306 | SHUNNED | 1      | db1     |
+| 10           | 89.45.237.218 | 3306 | ONLINE  | 1      | db2     |
+| 20           | 89.45.237.133 | 3306 | ONLINE  | 1      | db3     |
+| 20           | 89.45.237.193 | 3306 | ONLINE  | 1      | db1     |
+| 30           | 89.45.237.133 | 3306 | ONLINE  | 1      | db3     |
+| 30           | 89.45.237.193 | 3306 | ONLINE  | 1      | db1     |
++--------------+---------------+------+---------+--------+---------+
 ```
+
+ProxySQL backend host status:
 
 | Status | Description |
 | --- | --- |
 | `ONLINE` | The backend server is fully operational.
 | `OFFLINE_SOFT` | When a server is put into `OFFLINE_SOFT` mode, new incoming connections aren’t accepted anymore, while the existing connections are kept until they become inactive. In other words, connections are kept in use until the current transaction is completed. This makes it possible to gracefully detach a backend.
 | `OFFLINE_HARD` | When a server is put into `OFFLINE_HARD` mode, the existing connections are dropped, while new incoming connections aren’t accepted either. This is equivalent to deleting the server from a hostgroup, or temporarily taking it out of the hostgroup for maintenance work.
-| `SHUNNED` | The backend sever is temporarily taken out of use because of either too many connection errors in a time that was too short, or the replication lag exceeded the allowed threshold.
+| `SHUNNED` | The backend sever is temporarily taken out of use because of too many connection errors in a time that was too short, or the replication lag exceeded the allowed threshold, or to comply with Galera hostgroup `max_writers` configuration.
 
+To understand the query routing, we also need to check the ProxySQL query rules:
 
-### Gracefully disabling a backend server
+```sql
+ProxySQL> SELECT rule_id,match_pattern,apply,active,destination_hostgroup FROM runtime_mysql_query_rules;
++---------+-----------------------+-------+--------+-----------------------+
+| rule_id | match_pattern         | apply | active | destination_hostgroup |
++---------+-----------------------+-------+--------+-----------------------+
+| 100     | ^SELECT .* FOR UPDATE | 1     | 1      | 10                    |
+| 200     | ^SELECT .*            | 1     | 1      | 30                    |
+| 300     | .*                    | 1     | 1      | 10                    |
++---------+-----------------------+-------+--------+-----------------------+
 
-asd
+```
 
-### Setting server's weight
+To understand how ProxySQL performs host grouping, check Galera hostgroup settings:
 
-asd
+```sql
+ProxySQL> SELECT * FROM runtime_mysql_galera_hostgroups\G
+*************************** 1. row ***************************
+       writer_hostgroup: 10
+backup_writer_hostgroup: 20
+       reader_hostgroup: 30
+      offline_hostgroup: 9999
+                 active: 1
+            max_writers: 1
+  writer_is_also_reader: 2
+max_transactions_behind: 30
+                comment:
+```
 
-### Adding a query rule
+From the `runtime_mysql_servers`, `runtime_mysql_query_rules` and `runtime_mysql_galera_hostgroups` output, we can summarise the following:
 
-asd
+* [ Rule ID : 100 & 300 ]
+The ONLINE MariaDB node of hostgroup 10 is the single writer, because we configure `max_writers=1` inside `runtime_mysql_galera_hostgroups`. Therefore, all writes will be processed by 89.45.237.218 (db2).
 
-### Adding a MySQL user
+* [ Rule ID : 200 ] The ONLINE MariaDB nodes of hostgroup 30 are the multi-reader. Therefore, all reads (all `SELECT` except `SELECT .. FOR UPDATE`) will be processed by 89.45.237.193 (db1) and 89.45.237.133 (db3).
 
-asd
+* The ONLINE MariaDB nodes of hostgroup 20 are the backup writers. This hostgroup is not being used as a destination in the query rules.
+
+### Adding a new query rule
+
+Important notes regarding ProxySQL query rules:
+
+* Query rules are processed as ordered by `rule_id`.
+* Only rules that have `active=1` are processed. Because query rules is a very powerful tool and if it’s misconfigured, it can lead to difficult debugging, by default active is 0. You should double check rules regexes before enabling them.
+* Pay a lot of attention to regex to avoid some rules matching what they shouldn’t.
+* The `apply=1` means that no further rules are checked if there is a match. With `apply=0`, we can make rule chaining.
+
+In this example, we would like to have a specific SELECT query to always hit the single-writer node (hostgroup 10). Ideally, we would want to process this SELECT query right before the wildcard SELECT (rule 200). Therefore, we will add a new rule with ID 150 using the following statement:
+
+```sql
+ProxySQL> INSERT INTO mysql_query_rules (rule_id,match_pattern,active,apply,destination_hostgroup) VALUES (150,'^ SELECT session FROM active_users',1,1,10);
+ProxySQL> LOAD MYSQL QUERY RULES TO RUNTIME; -- to activate the changes
+ProxySQL> SAVE MYSQL QUERY RULES TO DISK; -- after verify the query rule is correct
+```
+
+\* *Do not forget to commit the changes in MEMORY into RUNTIME to activate the query rule processing.*
+
+### Adding a MariaDB user
+
+The MariaDB user must be created on both MariaDB and ProxySQL, and the ProxySQL must be granted host to access the MariaDB server. For example, if you have a static environment with the following topology:
+
+* 2-node Nextcloud: 192.168.10.11, 192.168.10.12
+* 2-node ProxySQL: 192.168.10.101, 192.168.10.102
+* 3-node MariaDB: 192.168.10.201, 192.168.10.202, 192.168.10.203
+
+The recommended grant on the MariaDB server should be:
+```sql
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.101' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- proxysql1
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.102' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- proxysql2
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.11' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud1
+GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud2'@'192.168.10.12' IDENTIFIED BY '1Z&hw5oiN$2b#wkH'; -- nextcloud2
+```
+
+Once the above user is created on the MariaDB server, login to ProxySQL admin console:
+
+```bash
+docker-compose exec nextcloud-proxysql mysql
+```
+
+Then, add the user into ProxySQL:
+
+```sql
+ProxySQL> INSERT INTO mysql_users (username,password,default_hostgroup,transaction_persistent) VALUES ('nextcloud2','1Z&hw5oiN$2b#wkH',10,0);
+ProxySQL> LOAD MYSQL USERS TO RUNTIME;
+ProxySQL> SAVE MYSQL USERS TO DISK;
+```
+
+Make sure `default_hostgroup` value is set to 10, the `writer_hostgroup` value. At this point, the database user `nextcloud2` should be able to connect to the MariaDB server via ProxySQL, on port 6033.
+
+## System Statistics and Monitoring
+
+### Stats database
+
+ProxySQL exports a lot of metrics, all visible in the `stats` schema and queryable using any client that uses the MySQL protocol.
+
+Login as an
+```bash
+docker-compose exec nextcloud-proxysql mysql
+```
+
+Once logged in, we can query any the following tables to get some monitoring insights:
+
+```sql
+ProxySQL> SHOW TABLES FROM stats;
++--------------------------------------+
+| tables                               |
++--------------------------------------+
+| global_variables                     |
+| stats_memory_metrics                 |
+| stats_mysql_commands_counters        |
+| stats_mysql_connection_pool          |
+| stats_mysql_connection_pool_reset    |
+| stats_mysql_errors                   |
+| stats_mysql_errors_reset             |
+| stats_mysql_free_connections         |
+| stats_mysql_global                   |
+| stats_mysql_gtid_executed            |
+| stats_mysql_prepared_statements_info |
+| stats_mysql_processlist              |
+| stats_mysql_query_digest             |
+| stats_mysql_query_digest_reset       |
+| stats_mysql_query_rules              |
+| stats_mysql_users                    |
+| stats_proxysql_servers_checksums     |
+| stats_proxysql_servers_metrics       |
+| stats_proxysql_servers_status        |
++--------------------------------------+
+```
+
+Some important tables when monitoring and debugging:
+
+| Table | Description |
+| --- | --- |
+| `stats_mysql_query_digest` |  Summary of queries that have been processed by ProxySQL. To reset the sampling, just query the `stats_mysql_query_digest_reset` table which resets the internal statistics to zero.
+| `stats_mysql_processlist` | Shows all process list that are currently being performed by ProxySQL.
+| `stats_mysql_connection_pool` | Connection pooling stats. To reset the sampling, just query the `stats_mysql_connection_pool_reset` table which resets the internal statistics to zero.
+| `stats_proxysql_servers_checksums` | Summary of ProxySQL configuration checksums, to track configuration changes between ProxySQL servers.
+
+### Web GUI (stats only)
+
+Web UI stats is available at port 6080, [https://{Host_IP_Address}:6080/](https://{Host_IP_Address}:6080/) and login as user `stats` as in `admin-stats_credentials` variable.
+
+It's mandatory to use HTTPS to access this interface. Use browser that can tolerate unsecured HTTPS site like Firefox. Once you login, a dashboard with generic information is displayed. From here, you can choose a category to get useful metrics. This feature is still in beta, and subject to changes in the future.
