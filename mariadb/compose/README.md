@@ -94,7 +94,7 @@ $ docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup -e
 
 **!! ATTENTION !!**
 
-Only bootstrap one node in a Galera cluster (commonly the first node). The rest of the nodes, BOOTSTRAP should be set to 0 or skip defining it. Don't proceed to start the remaining node until the first node is bootstrapped.
+Only bootstrap one node in a Galera cluster (commonly the first node). For the rest of the nodes, `BOOTSTRAP` should be set to 0 or skip defining it. Don't proceed to start the remaining node until the first node is bootstrapped.
 
 ---
 
@@ -172,7 +172,7 @@ cd compose
 docker-compose kill -s SIGTERM # graceful shutdown
 docker-compose down # only if you want to remove the container
 ```
-\* *By default, `docker-compose down` sends SIGTERM and wait for 10 seconds for a graceful timeout (followed by a SIGKILL after exceeding 10 seconds). The safest way is to use `kill` flag and send SIGTERM which has no timeout, and MariaDB should have all its time to shutdown gracefully (in case there are long running queries).*
+\* *By default, `docker-compose down` sends SIGTERM and wait for 10 seconds for a graceful timeout (followed by a SIGKILL after exceeding 10 seconds). The safest way is to use `kill` flag and send SIGTERM which has no timeout, and MariaDB should have all its time to shut down gracefully (in case there are long-running queries).*
 
 The last node that goes down, shall have `safe_to_bootstrap` set to 1. To verify this, we can look at the content of `grastate.dat` file under the MySQL data volume:
 
@@ -215,7 +215,7 @@ nextcloud-mariadb_1    | 2020-09-30  8:02:02 0 [Note] WSREP: Recovered position:
 
 The recovered position for this node is 22. The first value (cb61f63f-01fd-11eb-9e62-6745e57d17ff) is the cluster UUID, the next value (22) is the Galera seqno and the last value (1000-1000-7217) is the MariaDB GTID position.
 
-Now compare the Galera seqno value of 22 with other nodes. The highest value of this shall be started with `BOOTSTRAP=1`. If all nodes are reporting a same value, it means all nodes in the cluster are in the same consistent state. Therefore, you can pick any of the nodes to bootstrap.
+Now compare the Galera seqno value of 22 with other nodes. The highest value of this shall be started with `BOOTSTRAP=1`. If all nodes are reporting the same value, it means all nodes in the cluster are in the same consistent state. Therefore, you can pick any of the nodes to bootstrap.
 
 Now on the chosen node, in this example let's say db1, run the bootstrap command as below:
 ```bash
@@ -249,9 +249,9 @@ docker-compose kill -s SIGTERM
 docker-compose up -d
 ```
 
-\* *MariaDB restart must be performed on one node at a time for a 3-node Galera cluster. For a 5-node Galera cluster, you can have maximum of 2 unavailable nodes at a time.*
+\* *MariaDB restart must be performed on one node at a time for a 3-node Galera cluster. For a 5-node Galera cluster, you can have a maximum of 2 unavailable nodes at a time.*
 
-\* *By default, `docker-compose down` sends SIGTERM and wait for 10 seconds for a graceful timeout (followed by a SIGKILL after exceeding 10 seconds). The safest way is to use `kill` flag and send SIGTERM which has no timeout, and MariaDB should have all its time to shutdown gracefully (in case there are long running queries).*
+\* *By default, `docker-compose down` sends SIGTERM and wait for 10 seconds for a graceful timeout (followed by a SIGKILL after exceeding 10 seconds). The safest way is to use `kill` flag and send SIGTERM which has no timeout, and MariaDB should have all its time to shut down gracefully (in case there are long-running queries).*
 
 ### Starting a MariaDB node with forced SST
 
@@ -266,11 +266,11 @@ rm -f datadir/grastate.dat # or simply remove/rename the datadir directory
 docker-compose up -d
 ```
 
-\* *Here we specified `docker-compose down` to force MariaDB to stop, regardless of the state since we are going to have a full syncing afterwards anyway.*
+\* *Here we specified `docker-compose down` to force MariaDB to stop, regardless of the state since we are going to have a full syncing afterward anyway.*
 
 The above will trigger Galera to perform an SST operation before this node is allowed to join the cluster. This is practically useful especially after a restoration process, where you want the joiner node to ignore what it has and follow the bootstrapped (reference) node instead.
 
-Depending on the database size and network, the SST operation could impact the donor (backup streaming process) and saturate the network if you have a limited bandwidth between nodes.
+Depending on the database size and network, the SST operation could impact the donor (backup streaming process) and saturate the network if you have limited bandwidth between nodes.
 
 ## Connecting to the MariaDB Server
 
@@ -291,13 +291,13 @@ Running on IPv6 is possible but not recommended at the moment, due to many issue
 
 ### Administrator user
 
-Most of the administration task can be performed by user `backup` since it has been granted with the `SUPER` privilege (except `GRANT`). The safest way to connect to the MySQL server via console as user `backup` is to use the following command:
+Most of the administration tasks can be performed by user `backup` since it has been granted the `SUPER` privilege (except `GRANT`). The safest way to connect to the MySQL server via console as user `backup` is to use the following command:
 
 ```bash
 docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup
 ```
 
-The above will connect to the MariaDB via socket, where we can verify that with `status` command:
+The above will connect to the MariaDB via UNIX socket, where we can verify that with `status` command:
 
 ```
 MariaDB [(none)]> status
@@ -332,7 +332,7 @@ If you would like to connect as the `root` user (e.g, granting user), use the fo
 docker-compose exec nextcloud-mariadb mysql -uroot -p
 ```
 
-Specify the password as defined under `MYSQL_ROOT_PASSWORD` environment variable.
+Specify the password as defined under `MYSQL_ROOT_PASSWORD` environment variable. Alternatively, you can also use Adminer accessible on port 8080 to access the MariaDB server via GUI. See [Management using GUI](#management-using-gui).
 
 ### Application user
 
@@ -362,7 +362,7 @@ FLUSH PRIVILEGES;
 
 ### Management using GUI
 
-Optionally, you can use Adminer for database administration, accessible on port 8080 of the Docker host. Open the web browser, and go to `http://{Host_IP_Address}:8080/`. You may login using the MariaDB root user or any user created under the `init` directory.
+Optionally, you can use Adminer for database administration, accessible on port 8080 of the Docker host. Open the web browser, and go to `http://{Host_IP_Address}:8080/`. You may log in using the MariaDB root user or any database user created under the `init` directory.
 
 ## Health Checks & Monitoring
 
@@ -403,7 +403,7 @@ $ docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup -e
 
 ### Network split
 
-When a 3-node cluster is split, for example faulty switch which connect all the DB nodes, every MariaDB node will see itself as 1/3 (minority) and will be demoted to `Non-Primary` state. If this situation happens, your application will see this error:
+When a 3-node cluster is split, for example, a faulty switch which connects all the DB nodes, every MariaDB node will see itself as 1/3 (minority) and will be demoted to `Non-Primary` state. If this situation happens, your application will see this error:
 ```
 ERROR 1047 WSREP has not yet prepared node for application use
 ```
@@ -414,7 +414,7 @@ To verify on this, check the `wsrep_cluster_status` status:
 docker-compose exec nextcloud-mariadb mysql --defaults-group-suffix=_backup mysql -e 'SHOW STATUS LIKE "wsrep_cluster_status"'
 ```
 
-When the network issue resolves after replacing the faulty switch, Galera should be able to resume the group communication and replication automatically, by merging the state of the nodes and form a new `Primary` component. If merging is not possible or could cause conflicts, Galera will stay down and require manual intervention to promote one of the node as Primary (a.k.a bootstrap).
+When the network issue resolves after replacing the faulty switch, Galera should be able to resume the group communication and replication automatically, by merging the state of the nodes and form a new `Primary` component. If merging is not possible or could cause conflicts, Galera will stay down and require manual intervention to promote one of the nodes as Primary (a.k.a bootstrap).
 
 Before bootstrapping a partitioned cluster, compare the `wsrep_last_committed` value on every node by using this command:
 ```bash
@@ -455,7 +455,7 @@ This compose example provides two MariaDB configuration files under [conf](https
       - ${PWD}/backups:/backups
 ```
 
-If you would like to extend the MariaDB configuration file to include your own configuration file, you can merge the configuration lines into `conf/my.cnf` for non-sensitive variables, or `conf/credentials.cnf` for sensitive variables. Having multiple overlapping configuration files is not recommended and can cause confusion on the order of which variable take precedence to be loaded into MariaDB. Try to stick with these two configuration files if possible.
+If you would like to extend the MariaDB configuration file to include your own configuration file, you can merge the configuration lines into `conf/my.cnf` for non-sensitive variables, or `conf/credentials.cnf` for sensitive variables. Having multiple overlapping configuration files is not recommended and can cause confusion on the order of which variable takes precedence to be loaded into MariaDB. Try to stick with these two configuration files if possible.
 
 ### Dynamic variables
 
@@ -487,7 +487,7 @@ vi conf/my.cnf # modify config file
 
 ### Static variables
 
-To change a static variable which require a MariaDB restart, modify the `conf/my.cnf` file directly and restart the MariaDB server. For example, to increase the `innodb_read_io_threads` to 16, one would do:
+To change a static variable that require a MariaDB restart, modify the `conf/my.cnf` file directly and restart the MariaDB server. For example, to increase the `innodb_read_io_threads` to 16, one would do:
 
 ```bash
 cd compose
@@ -496,7 +496,7 @@ docker-compose kill -s SIGTERM # stop MariaDB
 docker-compose up -d # start MariaDB to load the new changes
 ```
 
-Only perform static configuration changes one node at a time. Make sure the node is started and joined with the cluster before proceed to the next node.
+Only perform static configuration changes one node at a time. Make sure the node is started and joined with the cluster before proceeding to the next node.
 
 ## Backup & Restore
 
@@ -553,7 +553,7 @@ The mysqldump stdout output is redirected to the path **OUTSIDE** of the contain
 
 ### mariabackup
 
-Backup created by Mariabackup is a binary backup, where it performs binary copy of the datadir while monitors the changes happens to the database until the copy operation completes. This means a backup created by Mariabackup is not a consistent backup and has to be prepared first. The prepare operation will roll forward the backup by replaying the InnoDB transaction log to make it consistent again and useful for restoration. After a backup has been prepared, you can simply swap the datadir with the prepared backup but this requires a downtime.
+Backup created by Mariabackup is a binary backup, where it performs a binary copy of the datadir while monitors the changes happen to the database until the copy operation completes. This means a backup created by Mariabackup is not a consistent backup and has to be prepared first. The prepare operation will roll forward the backup by replaying the InnoDB transaction log to make it consistent again and useful for restoration. After a backup has been prepared, you can simply swap the datadir with the prepared backup but this requires a downtime.
 
 In this example, we would want to restore a full mariabackup located on db1 under directory `/backups/mariabackup_2020-10-06_11:14:15` inside the container.
 
@@ -568,7 +568,7 @@ docker-compose exec nextcloud-mariadb mariabackup --prepare --target-dir=/backup
 
 \* *The `--target-dir` is the backup path inside the container.*
 
-You will see some output. Make sure you see `completed OK!` in the last line. That's the indicator the prepare is completed successfully.
+You will see some output. Make sure you see `completed OK!` in the last line. That's the indicator the "prepare" process is completed successfully.
 
 2) Stop the cluster:
 
@@ -579,7 +579,7 @@ docker-compose down # db2
 docker-compose down # db1
 ```
 
-\* *Here we are using `docker-compose down` because the server state does not matter anymore, since we are going to do full syncing afterwards.*
+\* *Here we are using `docker-compose down` because the server state does not matter anymore, since we are going to do full syncing afterward.*
 
 3) We will perform the restoration on db1. Rename the original datadir on db1:
 
@@ -623,7 +623,7 @@ At this point the cluster is restored and operational. If you want to continue w
 
 ### mysqldump
 
-Generally, restoring mysqldump on a running Galera cluster is a slow operation, way slower than restoring on a standalone node. This is due to write events that being generated by the import process, where the MySQL client sends the SQL statements to MariaDB server and every single statement has to be replicated and certified by Galera to the other nodes.
+Generally, restoring mysqldump on a running Galera cluster is a slow operation, way slower than restoring on a standalone node. This is due to write events that is generated by the import process, where the MySQL client sends the SQL statements to MariaDB server and every single statement has to be replicated and certified by Galera to the other nodes.
 
 For a small mysqldump size (<100MB), it might not have much impact so we can use the standard mysql import command:
 ```bash
@@ -697,7 +697,7 @@ The above will replay all events from that position until the last binary logs a
 
 ### Minor version upgrade
 
-Upgrading a minor version (10.5.y -> 10.5.z) should be pretty straightforward, which require no upgrade on the system tables within the same major version. Basically, we need to stop the current container and run a new container with an older Docker image, pointing to the same MariaDB datadir. Remember to perform this operation on one database node at a time, and if the upgrade on the first node fails, we still have chance to roll back to the current version.
+Upgrading a minor version (10.5.y -> 10.5.z) should be pretty straightforward, which requires no upgrade on the system tables within the same major version. Basically, we need to stop the current container and run a new container with an older Docker image, pointing to the same MariaDB datadir. Remember to perform this operation on one database node at a time, and if the upgrade on the first node fails, we still have a chance to roll back to the current version.
 
 This example shows that we would like to perform minor version upgrade to MariaDB 10.5.6 (image: `safespring/nextcloud-mariadb:10.5.6-2`) from MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
 
@@ -727,15 +727,15 @@ cd compose
 docker-compose up -d
 ```
 
-Check the Docker logs and make sure the node joins the cluster back without problem. Only proceed to the next nodes only the if the upgrade succeeds on this node, one node at a time.
+Check the Docker logs and make sure the node joins the cluster back without a problem. Only proceed to the next nodes only if the upgrade succeeds on this node, one node at a time.
 
 ### Major version upgrade
 
-Upgrading a major version (10.5.x -> 10.6.x) should be handled with care. For a best result, make you sure you have upgraded to the latest minor version first, before attempting to upgrade to the new major version. For example, if you are running on MariaDB 10.5.5 and would like to upgrade 10.6.1, while the latest 10.5 version is 10.5.17, perform minor version upgrade first to 10.5.17, before attempting to upgrade to 10.6.1.
+Upgrading a major version (10.5.x -> 10.6.x) should be handled with care. For the best result, make sure you have upgraded to the latest minor version first, before attempting to upgrade to the new major version. For example, if you are running on MariaDB 10.5.5 and would like to upgrade 10.6.1, while the latest 10.5 version is 10.5.17, perform a minor version upgrade first to 10.5.17, before attempting to upgrade to 10.6.1.
 
-0) Make sure the MariaDB server have been updated to the latest minor version, and the new major version image is ready.
+0) Make sure the MariaDB servers have been updated to the latest minor version, and the new major version image is ready.
 
-1) To be safe, stop the applications from writing on the database server because mixing nodes running on a different major version in a cluster could have a side-effect of writeset replication failure due to different Galera API version, different replication checksum, etc.
+1) To be safe, stop the applications from writing on the database server because mixing nodes running on a different major version in a cluster could have a side-effect of writeset replication failure due to different Galera API versions, different replication checksum, etc.
 
 2) Stop the cluster with `innodb_fast_shutdown=0`:
 
@@ -794,7 +794,7 @@ docker-compose up -d #db1
 
 ### Minor version downgrade
 
-Downgrading a minor version (10.5.y -> 10.5.z) should be pretty straightforward, since the MariaDB system tables should be the identical within the same major version. Simply stop the current container and run a new container with an older Docker image, pointing to the same MariaDB datadir.
+Downgrading a minor version (10.5.y -> 10.5.z) should be pretty straightforward since the MariaDB system tables should be identical within the same major version. Simply stop the current container and run a new container with an older Docker image, pointing to the same MariaDB datadir.
 
 This example shows that we would like to downgrade from MariaDB 10.5.6 (image: `safespring/nextcloud-mariadb:10.5.6-2`) to an older version MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
 
@@ -829,9 +829,9 @@ Proceed to the remaining nodes, one node at a time.
 
 Downgrading a major version (e.g, 10.5.x -> 10.6.x) is possible, but the safest way is to be done via logical downgrade, meaning you have to export the database first and import it back to the version that you want.
 
-Therefore, one would do the following if one wants to perform major version downgrade. The following example shows how to downgrade from MariaDB 10.6.1 (image: `safespring/nextcloud-mariadb:10.6.1-10`) to an older major version MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
+Therefore, one would do the following if one wants to perform a major version downgrade. The following example shows how to downgrade from MariaDB 10.6.1 (image: `safespring/nextcloud-mariadb:10.6.1-10`) to an older major version MariaDB 10.5.5 (image: `safespring/nextcloud-mariadb:10.5.5-1`):
 
-1) Stop writing to the MariaDB server, otherwise data written after the backup has initiated will be lost.
+1) Stop writing to the MariaDB server, otherwise, data written after the backup has initiated will be lost.
 
 2) Take a mysqldump backup on one of the host:
 
@@ -848,7 +848,7 @@ docker-compose down # db3
 docker-compose down # db2
 docker-compose down # db1
 ```
-\* *Here we are using `docker-compose down` because the server state does not matter anymore, since we are going to do full syncing afterwards.*
+\* *Here we are using `docker-compose down` because the server state does not matter anymore, since we are going to do full syncing afterward.*
 
 4) Wipe the datadir:
 
