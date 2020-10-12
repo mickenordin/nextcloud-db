@@ -347,6 +347,25 @@ ProxySQL> SAVE MYSQL USERS TO DISK;
 
 Make sure `default_hostgroup` value is set to 10, the `writer_hostgroup` value. At this point, the database user `nextcloud2` should be able to connect to the MariaDB server via ProxySQL, on port 6033.
 
+### Disable a backend server gracefully
+
+If a backend server (MariaDB server) needs to be put under maintenance, it's recommended to set the status to `OFFLINE_SOFT`, which indicates ProxySQL to start to mark the backend server gracefully, waiting for any active connections to complete and will not create a new connection to the database servers anymore.
+
+To set `OFFLINE_SOFT`, use the following command:
+
+```sql
+ProxySQL> UPDATE mysql_servers SET status = 'OFFLINE_SOFT' WHERE hostname = '89.45.237.133';
+ProxySQL> LOAD MYSQL SERVERS TO RUNTIME; -- to activate the changes
+```
+
+Wait for a couple of minutes (ProxySQL has to gracefully terminate any active connections, connection pooling, persistent connection, etc) and verify by querying at the `runtime_mysql_servers` table:
+
+```sql
+ProxySQL> SELECT hostgroup_id,hostname,port,status,weight,comment FROM runtime_mysql_servers ORDER BY hostgroup_id;
+```
+
+Note that you only need to make this modification on one of the ProxySQL nodes. The modification will get synced to the other ProxySQL nodes after `LOAD .. TO RUNTIME` statement is executed.
+
 ## System Statistics and Monitoring
 
 ### Stats database
