@@ -358,7 +358,7 @@ ProxySQL> UPDATE mysql_servers SET status = 'OFFLINE_SOFT' WHERE hostname = '89.
 ProxySQL> LOAD MYSQL SERVERS TO RUNTIME; -- to activate the changes
 ```
 
-Wait for a couple of minutes (ProxySQL has to gracefully terminate any active connections, connection pooling, persistent connection, etc) and verify by querying at the `runtime_mysql_servers` table:
+It's going to take a couple of since ProxySQL has to gracefully terminate any active connections, connection pooling, persistent connection, etc. Verify by querying at the `runtime_mysql_servers` table:
 
 ```sql
 ProxySQL> SELECT hostgroup_id,hostname,port,status,weight,comment FROM runtime_mysql_servers ORDER BY hostgroup_id;
@@ -368,7 +368,7 @@ Note that you only need to make this modification on one of the ProxySQL nodes. 
 
 ## System Statistics and Monitoring
 
-### Stats database
+### Stats schema
 
 ProxySQL exports a lot of metrics, all visible in the `stats` schema and queryable using any client that uses the MySQL protocol.
 
