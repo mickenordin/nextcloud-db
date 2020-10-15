@@ -37,7 +37,7 @@ docker-compose -f docker-compose.yaml -f docker-compose.bootstrap.yaml up -d
 
 You shall see the following line, indicating this node is started with Galera replication:
 ```bash
-$ docker-compose logs nextcloud-mariadb -f
+$ docker-compose logs -f nextcloud-mariadb
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
@@ -53,7 +53,7 @@ docker-compose up -d
 
 You shall see the following line, indicating this node is started with Galera replication:
 ```bash
-$ docker-compose logs nextcloud-mariadb -f
+$ docker-compose logs -f nextcloud-mariadb
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
@@ -69,7 +69,7 @@ docker-compose up -d
 
 You shall see the following line, indicating this node is started with Galera replication:
 ```bash
-$ docker-compose logs nextcloud-mariadb -f
+$ docker-compose logs -f nextcloud-mariadb
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
@@ -137,7 +137,7 @@ docker-compose up -d
 
 Either way chosen, you shall see the following line, indicating this node is started with Galera replication:
 ```bash
-$ docker-compose logs nextcloud-mariadb -f
+$ docker-compose logs -f nextcloud-mariadb
 ...
 2020-09-30  8:14:59 2 [Note] WSREP: Synchronized with group, ready for connections
 ...
