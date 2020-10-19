@@ -1,5 +1,29 @@
 # Running ProxySQL with Docker Compose
 
+## Table of Contents
+
+* [Overview](#overview)
+* [Service Control](#service-control)
+  * [Starting ProxySQL](#starting-proxysql)
+  * [Stopping ProxySQL](#stopping-proxysql)
+  * [Restarting ProxySQL](#restarting-proxysql)
+* [Connecting to ProxySQL](#connecting-to-proxysql)
+  * [Connect as ProxySQL admin user](#connect-as-proxysql-admin-user)
+  * [Connect as application user](#connect-as-application-user)
+* [Configuration Management](#configuration-management)
+  * [Config changes on configuration file (require restart)](#config-changes-on-configuration-file-require-restart)
+  * [Config changes on runtime (no restart required)](#config-changes-on-runtime-no-restart-required)
+* [Load Balancer Management](#load-balancer-management)
+  * [Backend server and routing status](#backend-server-and-routing-status)
+  * [Adding a new query rule](#adding-a-new-query-rule)
+  * [Adding a MariaDB user](#adding-a-mariadb-user)
+  * [Disable a backend server gracefully](#disable-a-backend-server-gracefully)
+* [System Statistics and Monitoring](#system-statistics-and-monitoring)
+  * [Stats schema](#stats-schema)
+  * [Web GUI (stats only)](#web-gui-stats-only)
+
+## Overview
+
 In this example of Docker compose, we define 1 service:
 
 1. **ProxySQL** (mandatory)
