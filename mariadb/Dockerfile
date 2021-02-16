@@ -71,7 +71,7 @@ RUN set -ex; \
 	} | debconf-set-selections; \
 	apt-get update; \
 	apt-get install -y \
-		"mariadb-server=$MARIADB_VERSION" \
+		mariadb-server \
 		mariadb-backup \
 		socat \
 		openssl \
