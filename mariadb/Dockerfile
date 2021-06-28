@@ -43,8 +43,8 @@ RUN set -eux; \
 RUN mkdir /docker-entrypoint-initdb.d
 RUN mkdir /backups
 
-ENV MARIADB_MAJOR 10.5
-ENV MARIADB_VERSION 1:10.5.6+maria~focal
+ENV MARIADB_MAJOR 10.6
+ENV MARIADB_VERSION 1:10.6.2+maria~focal
 # release-status:Stable
 # (https://downloads.mariadb.org/mariadb/+releases/)
 
